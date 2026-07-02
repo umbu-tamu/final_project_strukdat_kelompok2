@@ -3,9 +3,8 @@
 
 using namespace std;
 
-// ==========================================
 // 1. STRUCT & ARRAY (Tanggung Jawab: Nia)
-// ==========================================
+
 struct Menu {
     string nama;
     int harga;
@@ -69,9 +68,7 @@ void tambahMenuKeRestoran(int idResto, string namaMenu, int harga, int terjual) 
     }
 }
 
-// ==========================================
 // SEARCHING ALGORITHM (Tanggung Jawab: Haidar, Farel, Fernanda)
-// ==========================================
 Restoran* cariRestoran(string namaCari) {
     Restoran* temp = headRestoran;
     while (temp != nullptr) {
@@ -83,9 +80,7 @@ Restoran* cariRestoran(string namaCari) {
     return nullptr;
 }
 
-// ==========================================
 // SORTING ALGORITHM - Best Seller (Farel & Fernanda)
-// ==========================================
 void urutkanMenuBestSeller(Menu arr[], int n) {
     // Menggunakan Bubble Sort secara Descending (Terbanyak ke Terkecil)
     for (int i = 0; i < n - 1; i++) {
@@ -99,9 +94,7 @@ void urutkanMenuBestSeller(Menu arr[], int n) {
     }
 }
 
-// ==========================================
 // QUEUE FOR BOOKING (Tanggung Jawab: Haidar & Nia)
-// ==========================================
 const int MAX_QUEUE = 10;
 Booking antreanBooking[MAX_QUEUE];
 int frontQueue = -1;
@@ -133,9 +126,7 @@ Booking dequeueBooking() {
     return diproses;
 }
 
-// ==========================================
 // STACK FOR CANCEL BOOKING (Tanggung Jawab: Haidar)
-// ==========================================
 CancelNode* topStack = nullptr;
 
 void pushCancel(Booking b) {
