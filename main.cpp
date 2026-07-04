@@ -193,9 +193,9 @@ int main() {
     int pilihanRole, pilihanMenu;
     string username, password;
 
-    cout << "=========================================\n";
-    cout << "  SISTEM RESERVASI RESTORAN (STRUKDAT)  \n";
-    cout << "=========================================\n";
+    cout << "=============================\n";
+    cout << "  SISTEM RESERVASI RESTORAN  \n";
+    cout << "=============================\n";
     
     do {
         cout << "\nPilih Akses Login:\n1. Admin\n2. User/Pelanggan\n3. Keluar Aplikasi\nPilihan: ";
