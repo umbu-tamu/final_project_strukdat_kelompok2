@@ -213,7 +213,8 @@ int main() {
                     cout << "2. Lihat & Proses Pembayaran Antrean Booking\n";
                     cout << "3. Cancel Antrean Booking Terakhir\n";
                     cout << "4. Lihat Riwayat Pembatalan (Stack)\n";
-                    cout << "5. Logout\nPilihan: ";
+                    cout << "5. Tambah Restoran Baru\n";
+                    cout << "6. Logout\nPilihan: ";
                     cin >> menuAdmin;
 
                     if (menuAdmin == 1) {
@@ -240,7 +241,14 @@ int main() {
                     else if (menuAdmin == 4) {
                         tampilkanRiwayatPembatalan();
                     }
-                } while (menuAdmin != 5);
+                    else if (menuAdmin == 5) {
+                        int idRestoBaru; string namaRestoBaru;
+                        cout << "Masukkan ID Restoran Baru: "; cin >> idRestoBaru;
+                        cout << "Masukkan Nama Restoran Baru: "; cin.ignore(); getline(cin, namaRestoBaru);
+                        tambahRestoran(idRestoBaru, namaRestoBaru);
+                        cout << "Restoran " << namaRestoBaru << " Berhasil Ditambahkan.\n";
+                    }
+                } while (menuAdmin != 6);
             } else {
                 cout << "Login Admin Gagal!\n";
             }
