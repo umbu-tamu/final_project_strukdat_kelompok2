@@ -264,21 +264,25 @@ int main() {
                     cout << "Masukkan Nama Restoran yang dicari: ";
                     cin.ignore();
                     getline(cin, cari);
-                    
+    
                     Restoran* r = cariRestoran(cari);
                     if (r != nullptr) {
                         cout << "\nRestoran ditemukan: " << r->nama << "\n";
-                        
-                        // Menampilkan menu sebelum disortir
+        
                         cout << "[Menu Original]:\n";
                         for(int i=0; i<r->jumlahMenu; i++) {
                             cout << "- " << r->daftarMenu[i].nama << " (Rp" << r->daftarMenu[i].harga << ")\n";
                         }
 
-                        // Menampilkan Best Seller menggunakan sorting (Tanggung jawab Farel/Fernanda)
+                        // Jalankan fungsi sorting untuk mengurutkan array
                         urutkanMenuBestSeller(r->daftarMenu, r->jumlahMenu);
-                        cout << "\n[Tampilan Depan - Best Seller Menu]:\n";
-                        cout << "★ " << r->daftarMenu[0].nama << " (Terjual: " << r->daftarMenu[0].terjual << " pcs) ★\n";
+        
+                        // --- UBAH BAGIAN INI UNTUK MENAMPILKAN SEMUA URUTAN ---
+                        cout << "\n[Tampilan Depan - Best Seller Menu (Urutan Terlaris)]:\n";
+                        for(int i = 0; i < r->jumlahMenu; i++) {
+                            cout << i + 1 << ". " << r->daftarMenu[i].nama 
+                            << " (" << r->daftarMenu[i].terjual << " pcs)\n";
+                        }
                     } else {
                         cout << "Restoran tidak ditemukan.\n";
                     }
