@@ -1,8 +1,15 @@
 #include <iostream>
 #include <string>
 #include <algorithm> // Ditambahkan untuk fungsi transform (case-insensitive)
+#include <fstream>   // Ditambahkan untuk file handling (penyimpanan data)
+#include <sstream>   // Ditambahkan untuk parsing baris file (stringstream)
 
 using namespace std;
+
+// ================== NAMA FILE PENYIMPANAN ==================
+const string FILE_RESTORAN = "data_restoran.txt";
+const string FILE_CANCEL   = "data_cancel.txt";
+const string FILE_COUNTER  = "data_counter.txt";
 
 // Fungsi pembantu untuk mengubah string menjadi huruf kecil semua
 string toLowerCase(string str) {
@@ -117,7 +124,7 @@ void enqueueBooking(string nama, string waktu, int kursi, string paket, int harg
         return;
     }
     if (frontQueue == -1) frontQueue = 0;
-    
+
     rearQueue++;
     idBookingCounter++;
     antreanBooking[rearQueue] = {idBookingCounter, nama, waktu, kursi, paket, (hargaMenu * kursi)};
@@ -127,7 +134,7 @@ void enqueueBooking(string nama, string waktu, int kursi, string paket, int harg
 Booking dequeueBooking() {
     Booking dataKosong = {0, "", "", 0, "", 0};
     if (isQueueEmpty()) return dataKosong;
-    
+
     Booking diproses = antreanBooking[frontQueue];
     frontQueue++;
     return diproses;
@@ -167,6 +174,171 @@ void cancelBookingTerakhir() {
     cout << "[Sistem] Booking ID " << dicancel.idBooking << " berhasil dicancel sebelum pembayaran.\n";
 }
 
+// FILE HANDLING (fstream) (Tanggung Jawab: Umbu)
+// Format file data_restoran.txt (per baris):
+// id|nama|jumlahMenu|namaMenu1,harga1,terjual1;namaMenu2,harga2,terjual2;...
+//
+// Format file data_cancel.txt (per baris, urutan dari TOP stack ke bawah):
+// idBooking|namaPelanggan|waktu|jumlahKursi|jenisPaket|totalBayar
+//
+// Format file data_counter.txt (satu baris):
+// idBookingCounter
+
+void simpanDataRestoran() {
+    ofstream fout(FILE_RESTORAN);
+    if (!fout.is_open()) {
+        cout << "[Sistem] Gagal membuka file untuk menyimpan data restoran.\n";
+        return;
+    }
+    Restoran* temp = headRestoran;
+    while (temp != nullptr) {
+        fout << temp->id << "|" << temp->nama << "|" << temp->jumlahMenu << "|";
+        for (int i = 0; i < temp->jumlahMenu; i++) {
+            fout << temp->daftarMenu[i].nama << "," << temp->daftarMenu[i].harga
+                 << "," << temp->daftarMenu[i].terjual;
+            if (i != temp->jumlahMenu - 1) fout << ";";
+        }
+        fout << "\n";
+        temp = temp->next;
+    }
+    fout.close();
+}
+
+// Memecah string berdasarkan delimiter (helper untuk parsing file)
+void splitString(const string& str, char delim, string hasil[], int& jumlah, int maks) {
+    jumlah = 0;
+    stringstream ss(str);
+    string token;
+    while (getline(ss, token, delim) && jumlah < maks) {
+        hasil[jumlah++] = token;
+    }
+}
+
+void muatDataRestoran() {
+    ifstream fin(FILE_RESTORAN);
+    if (!fin.is_open()) {
+        return; // File belum ada, biarkan sistem pakai data awal (inisialisasiData)
+    }
+
+    // Kosongkan linked list restoran yang ada sebelum memuat dari file
+    while (headRestoran != nullptr) {
+        Restoran* hapus = headRestoran;
+        headRestoran = headRestoran->next;
+        delete hapus;
+    }
+
+    string baris;
+    bool adaData = false;
+    while (getline(fin, baris)) {
+        if (baris.empty()) continue;
+        adaData = true;
+
+        string kolom[4];
+        int jumlahKolom = 0;
+        splitString(baris, '|', kolom, jumlahKolom, 4);
+
+        int id = stoi(kolom[0]);
+        string nama = kolom[1];
+        int jumlahMenu = stoi(kolom[2]);
+
+        tambahRestoran(id, nama);
+
+        if (jumlahKolom >= 4 && !kolom[3].empty()) {
+            string menuMentah[3];
+            int jumlahMenuMentah = 0;
+            splitString(kolom[3], ';', menuMentah, jumlahMenuMentah, 3);
+
+            for (int i = 0; i < jumlahMenuMentah; i++) {
+                string bagianMenu[3];
+                int jumlahBagian = 0;
+                splitString(menuMentah[i], ',', bagianMenu, jumlahBagian, 3);
+                if (jumlahBagian == 3) {
+                    tambahMenuKeRestoran(id, bagianMenu[0], stoi(bagianMenu[1]), stoi(bagianMenu[2]));
+                }
+            }
+        }
+    }
+    fin.close();
+    if (adaData) {
+        cout << "[Sistem] Data restoran berhasil dimuat dari file " << FILE_RESTORAN << ".\n";
+    }
+}
+
+void simpanRiwayatPembatalan() {
+    ofstream fout(FILE_CANCEL);
+    if (!fout.is_open()) {
+        cout << "[Sistem] Gagal membuka file untuk menyimpan riwayat pembatalan.\n";
+        return;
+    }
+    CancelNode* temp = topStack;
+    while (temp != nullptr) {
+        fout << temp->data.idBooking << "|" << temp->data.namaPelanggan << "|"
+             << temp->data.waktu << "|" << temp->data.jumlahKursi << "|"
+             << temp->data.jenisPaket << "|" << temp->data.totalBayar << "\n";
+        temp = temp->next;
+    }
+    fout.close();
+}
+
+void muatRiwayatPembatalan() {
+    ifstream fin(FILE_CANCEL);
+    if (!fin.is_open()) return;
+
+    // File ditulis dari TOP ke bawah stack, sehingga jika kita push ulang
+    // dengan urutan terbalik (dari baris terakhir ke baris pertama),
+    // urutan stack yang asli akan terjaga.
+    string baris;
+    string semuaBaris[100];
+    int jumlahBaris = 0;
+    while (getline(fin, baris) && jumlahBaris < 100) {
+        if (!baris.empty()) semuaBaris[jumlahBaris++] = baris;
+    }
+    fin.close();
+
+    for (int i = jumlahBaris - 1; i >= 0; i--) {
+        string kolom[6];
+        int jumlahKolom = 0;
+        splitString(semuaBaris[i], '|', kolom, jumlahKolom, 6);
+        if (jumlahKolom == 6) {
+            Booking b;
+            b.idBooking = stoi(kolom[0]);
+            b.namaPelanggan = kolom[1];
+            b.waktu = kolom[2];
+            b.jumlahKursi = stoi(kolom[3]);
+            b.jenisPaket = kolom[4];
+            b.totalBayar = stoi(kolom[5]);
+            pushCancel(b);
+        }
+    }
+    if (jumlahBaris > 0) {
+        cout << "[Sistem] Riwayat pembatalan berhasil dimuat dari file " << FILE_CANCEL << ".\n";
+    }
+}
+
+void simpanCounter() {
+    ofstream fout(FILE_COUNTER);
+    if (fout.is_open()) {
+        fout << idBookingCounter << "\n";
+        fout.close();
+    }
+}
+
+void muatCounter() {
+    ifstream fin(FILE_COUNTER);
+    if (fin.is_open()) {
+        int nilai;
+        if (fin >> nilai) idBookingCounter = nilai;
+        fin.close();
+    }
+}
+
+// Dipanggil setiap kali ada perubahan data penting, supaya data selalu tersimpan otomatis
+void simpanSemuaData() {
+    simpanDataRestoran();
+    simpanRiwayatPembatalan();
+    simpanCounter();
+}
+
 void inisialisasiData() {
     tambahRestoran(1, "Resto Padang Minang");
     tambahMenuKeRestoran(1, "Rendang Daging", 25000, 150);
@@ -189,14 +361,21 @@ void tampilkanSemuaRestoran() {
 }
 
 int main() {
-    inisialisasiData();
+    muatDataRestoran();
+    if (headRestoran == nullptr) {
+        inisialisasiData();
+        simpanDataRestoran();
+    }
+    muatRiwayatPembatalan();
+    muatCounter();
+
     int pilihanRole, pilihanMenu;
     string username, password;
 
     cout << "=============================\n";
     cout << "  SISTEM RESERVASI RESTORAN  \n";
     cout << "=============================\n";
-    
+
     do {
         cout << "\nPilih Akses Login:\n1. Admin\n2. User/Pelanggan\n3. Keluar Aplikasi\nPilihan: ";
         cin >> pilihanRole;
@@ -224,8 +403,9 @@ int main() {
                         cout << "Nama Menu Baru/Update: "; cin.ignore(); getline(cin, menuBaru);
                         cout << "Harga: "; cin >> hg;
                         tambahMenuKeRestoran(idR, menuBaru, hg, 0);
-                        cout << "Menu Berhasil Diperbarui.\n";
-                    } 
+                        simpanSemuaData();
+                        cout << "Menu Berhasil Diperbarui dan disimpan ke file.\n";
+                    }
                     else if (menuAdmin == 2) {
                         if (isQueueEmpty()) {
                             cout << "Tidak ada antrean pembayaran.\n";
@@ -233,10 +413,12 @@ int main() {
                             Booking b = dequeueBooking();
                             cout << "Memproses Pembayaran ID: " << b.idBooking << " atas nama " << b.namaPelanggan << "\n";
                             cout << "Total Tagihan: Rp" << b.totalBayar << " -> [LUNAS]\n";
+                            simpanSemuaData();
                         }
                     }
                     else if (menuAdmin == 3) {
                         cancelBookingTerakhir();
+                        simpanSemuaData();
                     }
                     else if (menuAdmin == 4) {
                         tampilkanRiwayatPembatalan();
@@ -246,13 +428,14 @@ int main() {
                         cout << "Masukkan ID Restoran Baru: "; cin >> idRestoBaru;
                         cout << "Masukkan Nama Restoran Baru: "; cin.ignore(); getline(cin, namaRestoBaru);
                         tambahRestoran(idRestoBaru, namaRestoBaru);
-                        cout << "Restoran " << namaRestoBaru << " Berhasil Ditambahkan.\n";
+                        simpanSemuaData();
+                        cout << "Restoran " << namaRestoBaru << " Berhasil Ditambahkan dan disimpan ke file.\n";
                     }
                 } while (menuAdmin != 6);
             } else {
                 cout << "Login Admin Gagal!\n";
             }
-        } 
+        }
         else if (pilihanRole == 2) {
             // LOGIN USER
             int menuUser;
@@ -266,17 +449,17 @@ int main() {
 
                 if (menuUser == 1) {
                     tampilkanSemuaRestoran();
-                } 
+                }
                 else if (menuUser == 2) {
                     string cari;
                     cout << "Masukkan Nama Restoran yang dicari: ";
                     cin.ignore();
                     getline(cin, cari);
-    
+
                     Restoran* r = cariRestoran(cari);
                     if (r != nullptr) {
                         cout << "\nRestoran ditemukan: " << r->nama << "\n";
-        
+
                         cout << "[Menu Original]:\n";
                         for(int i=0; i<r->jumlahMenu; i++) {
                             cout << "- " << r->daftarMenu[i].nama << " (Rp" << r->daftarMenu[i].harga << ")\n";
@@ -284,13 +467,13 @@ int main() {
 
                         // Jalankan fungsi sorting untuk mengurutkan array
                         urutkanMenuBestSeller(r->daftarMenu, r->jumlahMenu);
-        
-                        // --- UBAH BAGIAN INI UNTUK MENAMPILKAN SEMUA URUTAN ---
+
                         cout << "\n[Tampilan Depan - Best Seller Menu (Urutan Terlaris)]:\n";
                         for(int i = 0; i < r->jumlahMenu; i++) {
-                            cout << i + 1 << ". " << r->daftarMenu[i].nama 
+                            cout << i + 1 << ". " << r->daftarMenu[i].nama
                             << " (" << r->daftarMenu[i].terjual << " pcs)\n";
                         }
+                        simpanDataRestoran(); // urutan array berubah, simpan ulang
                     } else {
                         cout << "Restoran tidak ditemukan.\n";
                     }
@@ -310,8 +493,9 @@ int main() {
                         cout << "Jenis Paket (Reguler / AYCE): "; cin >> paketP;
 
                         // Mengambil estimasi harga dari menu pertama resto tersebut
-                        int hargaEstimasi = r->daftarMenu[0].harga; 
+                        int hargaEstimasi = r->daftarMenu[0].harga;
                         enqueueBooking(namaP, waktuP, kursiP, paketP, hargaEstimasi);
+                        simpanCounter();
                     } else {
                         cout << "Restoran salah.\n";
                     }
@@ -320,6 +504,9 @@ int main() {
         }
     } while (pilihanRole != 3);
 
-    cout << "\nTerima kasih telah menggunakan sistem kami!\n";
+    // Simpan seluruh data terakhir sebelum keluar aplikasi
+    simpanSemuaData();
+    cout << "\nSemua data telah disimpan ke file.\n";
+    cout << "Terima kasih telah menggunakan sistem kami!\n";
     return 0;
 }
